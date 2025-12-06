@@ -1,0 +1,252 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+<meta http-equiv="refresh" content="30">    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>%s-Env Readings</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        .dial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        .dial {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            text-align: center;
+        }
+
+        canvas {
+            width: 100%;
+        }
+
+        @media (max-width: 600px) {
+            .dial-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    .auto-style1 {
+	text-align: center;
+	font-family: Arial, Helvetica, sans-serif;
+}
+    .auto-style2 {
+		background-color: #0000FF;
+		text-align: center;
+		color: #FFFFFF;
+	}
+	.auto-style3 {
+		background-color: #F700FF;
+		text-align: center;
+		color: #FFFFFF;
+	}
+	.auto-style4 {
+		background-color: #00FF09;
+		text-align: center;
+		color: #FFFFFF;
+	}
+    .auto-style7 {
+		text-align: center;
+	}
+    .auto-style12 {
+	background-color: #FDFD00;
+}
+    .auto-style13 {
+	background-color: #00FFFF;
+}
+    </style>
+</head>
+<body>
+<div class="auto-style7">
+<h2 class="auto-style1"><span lang="en-gb" class="auto-style13">&nbsp; %s - </span>
+<span class="auto-style13">Sensor Readings<span lang="en-gb">&nbsp; </span>
+</span></h2>
+<center>
+	<p class="auto-style1"><span class="auto-style12" lang="en-gb">&nbsp;&nbsp;&nbsp;&nbsp; 
+	Date/Time: %s&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp; Battery Level: <strong>%d percent</strong></span></p>
+	<div class="auto-style7">
+		<button name="Abutton1"><span lang="en-gb" onclick="window.location.href='/datafiles'">Data and Charts</span></button>&nbsp;&nbsp;
+		<button name="Abutton2"><span lang="en-gb" onclick="window.location.href='/config'">Config</span></button>
+
+		<br>
+    </div>
+    <div class="dial-grid">	
+		<div class="dial">
+			<h3 class="auto-style2">Temperature (°C)</h3>
+			<div class="auto-style7">
+			<canvas id="tempDial" width="320" height="160"></canvas>
+			<span id="tempAlarm"></span> <!-- Alarm message for temperature -->
+		</div>
+		</div>
+		<div class="dial">
+			<h3 class="auto-style3">Pressure (hPa)</h3>
+			<div class="auto-style7">
+			<canvas id="pressureDial" width="320" height="160"></canvas>
+			<span id="pressureAlarm"></span><!-- Alarm message for pressure -->
+		</div>
+		</div>
+		<div class="dial">
+			<h3 class="auto-style4">Humidity (%%)</h3>
+			<div class="auto-style7">
+			<canvas id="humidityDial" width="320" height="160"></canvas>
+			<span id="humidityAlarm"></span> <!-- Alarm message for humidity -->
+		</div>
+		</div>
+			</div>
+    </center>
+	
+
+<script>
+
+// Dial drawing function
+function drawDial(ctx, value, minValue, maxValue, min_tick_value, max_tick_value, label, unit, colors, alarmElementId) {
+    const centerX = 160;  // Center X of the dial
+    const centerY = 150;  // Center Y of the dial (for semi-circle, should be at the bottom)
+    const radius = 120;   // Radius of the dial
+    const startAngle = Math.PI; // Starting angle (left, 180 degrees)
+    const endAngle = 2 * Math.PI; // Ending angle (right, 360 degrees)
+    const range = maxValue - minValue;
+
+    // Clear the canvas before drawing
+    ctx.clearRect(0, 0, 300, 150);
+
+    // Draw the semi-circular background (dial arc)
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+    ctx.lineWidth = 15;
+    ctx.strokeStyle = '#ddd'; // Light grey for the arc background
+    ctx.stroke();
+    ctx.closePath();
+
+    // Calculate the angle for the needle based on the current value
+    const angle = startAngle + ((value - minValue) / range) * Math.PI;
+
+    // Draw the needle (line representing the current value)
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);  // Start from the center of the dial
+    ctx.lineTo(
+        centerX + radius * Math.cos(angle), 
+        centerY + radius * Math.sin(angle)
+    );
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = colors.needle; // Color for the needle
+    ctx.stroke();
+    ctx.closePath();
+
+    // Draw the current value label
+    ctx.font = '20px Arial';
+    ctx.fillText(`${value} ${unit}`, 5, 20);
+
+    // Add evenly spaced ticks and labels
+    const numTicks = 10;  // Number of ticks (including min and max)
+    const tickLength = 10; // Length of the tick marks
+    const labelRadius = radius + 20; // Radius for positioning the tick labels
+    const step = range / (numTicks - 1); // Difference in value between two adjacent ticks
+
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = colors.needle; // Dark grey for tick marks
+
+    for (let i = 0; i < numTicks; i++) {
+        const tickValue = minValue + i * step;
+        const tickAngle = startAngle + (i / (numTicks - 1)) * Math.PI;
+
+        // Draw tick marks
+        ctx.beginPath();
+        ctx.moveTo(
+            centerX + (radius + 5 - tickLength) * Math.cos(tickAngle),
+            centerY + (radius + 5 - tickLength) * Math.sin(tickAngle)
+        );
+        ctx.lineTo(
+            centerX + (radius + 5) * Math.cos(tickAngle),
+            centerY + (radius + 5) * Math.sin(tickAngle)
+        );
+        ctx.stroke();
+        ctx.closePath();
+
+        // Draw tick labels (values)
+        const labelX = centerX + labelRadius * Math.cos(tickAngle);
+        const labelY = centerY + labelRadius * Math.sin(tickAngle);
+        ctx.font = '10px Arial';
+        ctx.fillStyle = colors.needle;
+        ctx.fillText(`${Math.round(tickValue)}`, labelX - 10, labelY + 5);
+    }
+
+    // Check if the value is outside the min/max range and display the alarm
+    const alarmElement = document.getElementById(alarmElementId);
+    if (value < min_tick_value || value > max_tick_value) {
+        alarmElement.textContent = 'Alarm';
+        alarmElement.style.color = 'red';
+    } else {
+        alarmElement.textContent = '';
+    }
+	//Draw max/min ticks
+	tickAngle = startAngle + ((min_tick_value-minValue)/range) * Math.PI;
+	// Draw tick marks
+	ctx.beginPath();
+	ctx.strokeStyle = 'red';
+	ctx.lineWidth = 2;
+	ctx.moveTo(
+		centerX + (radius-5 - tickLength) * Math.cos(tickAngle),
+		centerY + (radius-5 - tickLength) * Math.sin(tickAngle)
+	);
+	ctx.lineTo(
+		centerX + (radius+5) * Math.cos(tickAngle),
+		centerY + (radius+5) * Math.sin(tickAngle)
+	);
+	ctx.stroke();
+	ctx.closePath();
+	
+
+	tickAngle = startAngle + ((max_tick_value-minValue)/range) * Math.PI;
+	// Draw tick marks
+	ctx.beginPath();
+	ctx.fillStyle = 'red';
+	ctx.lineWidth = 2;
+	ctx.moveTo(
+		centerX + (radius-5 - tickLength) * Math.cos(tickAngle),
+		centerY + (radius-5 - tickLength) * Math.sin(tickAngle)
+	);
+	ctx.lineTo(
+		centerX + (radius+5) * Math.cos(tickAngle),
+		centerY + (radius+5) * Math.sin(tickAngle)
+	);
+	ctx.stroke();
+	ctx.closePath();
+	
+}
+
+// Initialize dials for temperature, pressure, and humidity
+function initDials() {
+    const tempCtx = document.getElementById('tempDial').getContext('2d');
+    const pressureCtx = document.getElementById('pressureDial').getContext('2d');
+    const humidityCtx = document.getElementById('humidityDial').getContext('2d');
+
+    // Draw the dials
+     
+    drawDial(tempCtx, %0.1f, 0, 50, %f, %f, 'Temperature','°C', { needle: 'blue' }, 'tempAlarm');
+    drawDial(pressureCtx, %0.0f, 950, 1050, %0.0f, %0.0f, 'Pressure', 'hPa', { needle: 'purple' }, 'pressureAlarm');
+    drawDial(humidityCtx, %0.0f, 0, 100, %0.0f, %0.0f, 'Humidity', '%%', { needle: 'green' }, 'humidityAlarm');}
+
+// Initialize the dials when the window loads
+initDials();
+
+</script>
+</div>
+    
+</body>
+</html>

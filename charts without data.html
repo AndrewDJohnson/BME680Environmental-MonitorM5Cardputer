@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="900">    
+
+    <title>Temperature, Pressure, Humidity Charts</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script> 
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+        }
+        .chart-container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 10px;
+        }
+        select {
+            margin: 10px;
+            padding: 5px;
+        }
+    .auto-style1 {
+		text-align: center;
+	}
+        .time-display {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }    
+	.auto-style3 {
+		font-size: medium;
+		margin-bottom: 10px;
+		text-align: center;
+		color: #0000FF;
+		background-color: #FFFF00;
+	}	
+       .slider-container {
+            text-align: center;
+            background: white;
+			width: 40%;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #ddd;
+            height: 6px;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #007BFF;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .value {
+            font-size: 24px;
+            margin-top: 10px;
+            font-weight: bold;
+        }		
+	
+	</style>
+</head>
+<body style="background-color: #CCCCCC">
+    <h2 class="auto-style1"><span lang="en-gb">Office</span> - Temperature, Pressure, Humidity<span lang="en-gb"> 
+	Charts and Files</span></h2>
+	<div class="auto-style3" id="timeDisplay">&nbsp;&nbsp;&nbsp;&nbsp; 
+	*** PLEASE WAIT ***: </div> &nbsp;&nbsp;&nbsp; 
+	<center>
+		<button name="Abutton1"><span lang="en-gb" onclick="window.location.href='/'">Home</span></button>
+		<span lang="en-gb">&nbsp; </span>
+		<button name="Abutton2"><span lang="en-gb" onclick="window.location.href='/config'">Config</span></button>
+		
+	
+	&nbsp;<br><br>
+    <!-- Time period selector -->
+    <!-- Time period selector (Slider) -->
+    <div class="slider-container">
+        
+  <span id="startTime">Start Epoch: </span>
+    <input type="range" id="startSlider" min="0" max="1439" value="0">
+    
+
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+    
+    <input type="range" id="endSlider" min="0" max="1439" value="1439">
+    
+    </div>
+
+ 
+</center><br><br>
+    <!-- Chart containers -->
+    <center>
+    <h3 id="temp_heading">Temperature</h3>    
+
+    <div class="chart-container">
+        <canvas id="temperatureChart"></canvas>
+    </div>
+<h3 id="press_heading">Pressure</h3>    
+    <div class="chart-container">
+        <canvas id="pressureChart"></canvas>
+    </div>
+<h3 id="humid_heading">Humidity</h3>    
+    <div class="chart-container">
+        <canvas id="humidityChart"></canvas>
+    </div>
+</center>
+    <script>
+// Data will be inserted here:
+{chart_data}
+        const maxSamples = 60; // Max points to display
+
+        // Function to downsample data
+        const downsampleData = (timestamps_data, values, maxPoints) => {
+            const step = Math.max(1, Math.floor(values.length / maxPoints));
+            return {
+                times: timestamps_data.filter((_, i) => i % step === 0),
+                values: values.filter((_, i) => i % step === 0)
+            };
+        };
+
+        // Chart options with smooth lines
+        const commonChartOptions = {
+            type: 'line',
+            options: {
+                responsive: true,
+                elements: {
+                    line: {
+                        tension: 0.4 // Make the lines smooth curves
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'minute',
+                            displayFormats: {
+                                minute: 'HH:mm'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Value'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+
+        };
+
+        // Chart instances
+        const temperatureChart = new Chart(document.getElementById('temperatureChart').getContext('2d'), {
+            ...commonChartOptions,
+			data: { datasets: [{ label: 'Temperature (°C)', borderColor: 'red', backgroundColor: 'rgba(255, 99, 132, 0.2)', data: [] }] },
+			options: {
+                ...commonChartOptions.options,
+                scales: {
+                    ...commonChartOptions.options.scales,
+                    y: {
+                        ...commonChartOptions.options.scales.y,
+                        min: 0, 
+                        max: 100, 
+                        title: {
+                            display: true,
+                            text: 'Temperature (°C)'
+                        }
+                    }
+                }
+            }
+        });
+
+        const pressureChart = new Chart(document.getElementById('pressureChart').getContext('2d'), {
+            ...commonChartOptions,
+            data: { datasets: [{ label: 'Pressure (hPa)', borderColor: 'blue', backgroundColor: 'rgba(54, 162, 235, 0.2)', data: [] }] },
+			
+            options: {
+                ...commonChartOptions.options,
+                scales: {
+                    ...commonChartOptions.options.scales,
+                    y: {
+                        ...commonChartOptions.options.scales.y,
+                        min: 500, 
+                        max: 1500, 
+                        title: {
+                            display: true,
+                            text: 'Pressure (hPa)'
+                        }
+                    }
+                }
+            }
+        });
+
+        const humidityChart = new Chart(document.getElementById('humidityChart').getContext('2d'), {
+            ...commonChartOptions,
+            data: { datasets: [{ label: 'Humidity (%)', borderColor: 'green', backgroundColor: 'rgba(75, 192, 192, 0.2)', data: [] }] },
+            options: {
+                ...commonChartOptions.options,
+                scales: {
+                    ...commonChartOptions.options.scales,
+                    y: {
+                        ...commonChartOptions.options.scales.y,
+                        min: 0, 
+                        max: 100, 
+                        title: {
+                            display: true,
+                            text: 'Humidity (%)'
+                        }
+                    }
+                }
+            }
+        });
+
+        function updateCharts(start,end) {
+			const now = timestamps_data[timestamps_data.length - 1];
+
+            // Filter data
+            const filterData = (times, values) => {
+                return {
+                    times: times.filter((t, i) => t >= start && t <= end ),
+                    values: values.filter((_, i) => times[i] >= start && times[i]<= end)
+
+                };
+            };
+
+            let filteredTemp = filterData(timestamps_data, temp_data);
+            let filteredPress = filterData(timestamps_data, pressure_data);
+            let filteredHumid = filterData(timestamps_data, humidity_data);
+
+            // Downsample if necessary
+            if (filteredTemp.times.length > maxSamples) {
+                filteredTemp = downsampleData(filteredTemp.times, filteredTemp.values, maxSamples);
+                filteredPress = downsampleData(filteredPress.times, filteredPress.values, maxSamples);
+                filteredHumid = downsampleData(filteredHumid.times, filteredHumid.values, maxSamples);
+            }
+
+            // Update charts
+            temperatureChart.data.datasets[0].data = filteredTemp.times.map((t, i) => ({ x: t, y: filteredTemp.values[i] }));
+            pressureChart.data.datasets[0].data = filteredPress.times.map((t, i) => ({ x: t, y: filteredPress.values[i] }));
+            humidityChart.data.datasets[0].data = filteredHumid.times.map((t, i) => ({ x: t, y: filteredHumid.values[i] }));
+
+		  // Helper function to calculate min and max values of a dataset
+			const calculateMinMax = (dataset) => {
+				//const values = dataset.map(point => point.y);
+				return {
+					min: Math.min(...dataset),
+					max: Math.max(...dataset)
+				};
+			};
+
+			// Update scales dynamically based on downsampled data
+			const temperatureMinMax = calculateMinMax(filteredTemp.values);
+			const pressureMinMax = calculateMinMax(filteredPress.values);
+			const humidityMinMax = calculateMinMax(filteredHumid.values);
+
+			temperatureChart.options.scales.y.min = Math.floor(temperatureMinMax.min)-1;
+			temperatureChart.options.scales.y.max = Math.ceil(temperatureMinMax.max)+1;
+
+			pressureChart.options.scales.y.min = Math.floor(pressureMinMax.min)-5;
+			pressureChart.options.scales.y.max = Math.ceil(pressureMinMax.max)+5;
+
+			humidityChart.options.scales.y.min = Math.floor(humidityMinMax.min)-1;
+			humidityChart.options.scales.y.max = Math.ceil(humidityMinMax.max)+1;
+			
+			heading = document.getElementById('temp_heading');
+			heading.textContent = "Temperature (Max=" +temperatureMinMax.max+ ", Min=" +temperatureMinMax.min+")";
+			heading = document.getElementById('press_heading');
+			heading.textContent = "Pressure (Max=" +pressureMinMax.max+ ", Min=" +pressureMinMax.min+")";
+			heading = document.getElementById('humid_heading');
+			heading.textContent = "Humidity (Max=" +humidityMinMax.max+ ", Min=" +humidityMinMax.min+")";
+
+
+			// Update the charts to reflect the new data and scales
+			temperatureChart.update();
+			pressureChart.update();
+			humidityChart.update();
+};
+
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('timeDisplay').textContent = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+        }
+
+		const startSlider = document.getElementById("startSlider");
+		const endSlider = document.getElementById("endSlider");
+		const startTimeDisplay = document.getElementById("startTime");
+
+
+
+		function formatTime(epoch) {
+			const date = new Date(epoch);
+			return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+		}
+
+		function calculatetimestamps_data() {
+			 data_length=timestamps_data.length ;
+			 startIndex = parseInt(startSlider.value);
+			 endIndex = parseInt(endSlider.value);
+			 if (data_length > 60)
+			 {
+				data_length=60;
+			 }
+			
+			if (startIndex >= endIndex-data_length) {
+				startIndex = endIndex-data_length;
+				startSlider.value = endSlider.value-data_length;
+			}
+			
+			const startEpoch = timestamps_data[0] + startIndex * 60000;
+			const endEpoch = timestamps_data[0] + endIndex * 60000;
+			data_length = endIndex - startIndex;
+			
+			startTimeDisplay.textContent = `Start Time: ${formatTime(startEpoch)} (` + Math.floor(data_length/60) + ' hrs ' + data_length%60 + ` mins) End Time: ${formatTime(endEpoch)}`;
+			//endTimeDisplay.textContent = `End Time: ${formatTime(endEpoch)}`;
+			updateCharts(startEpoch,endEpoch);
+		}
+		
+
+
+        window.onload = () => {
+			
+            updateTime();
+			endSlider.value=timestamps_data.length;
+			endSlider.max=timestamps_data.length;
+			
+            setInterval(updateTime, 1000);
+		startSlider.addEventListener("input", calculatetimestamps_data);
+			endSlider.addEventListener("input", calculatetimestamps_data);
+			calculatetimestamps_data(); // Initialize on page load
+
+        };
+    </script>
+	{csv_files} 
+</body>
+</html>
+
