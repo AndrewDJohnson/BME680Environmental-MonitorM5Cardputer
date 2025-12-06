@@ -1,6 +1,10 @@
 # BME680Environmental-MonitorM5Cardputer
 
 See: https://www.youtube.com/watch?v=Ygyj-1DjHoc
+Instructions:
+1. Edit the config.ini file to include WiFi network SSID and Password
+2. Copy this file and the 2 HTML files to the root of the SD card and insert into Cardputer
+3. Install/Burn the firmware (.bin) file
 
 This software is for the M5 Cardputer (original, but should work on the “advanced” model) and is an environmental monitoring system, saving data to an SD card and displaying it nicely on a webpage.
 
